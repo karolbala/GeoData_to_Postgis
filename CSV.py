@@ -2,37 +2,30 @@ from sqlalchemy import create_engine
 import geopandas as gpd
 import pandas as pd
 
-
-
-def import_csv_to_postgis(table_name, plik_csv, user, password, host, port, database):
-
+def import_csv_to_postgis(table_name, csv_file, user, password, host, port, database):
     """
-    Importuje dane z pliku CSV do bazy danych PostGIS.
+    Imports data from a CSV file into a PostGIS database.
 
     Args:
-        table_name (str): Nazwa tabeli, do której będą importowane dane.
-        plik_csv (str): Ścieżka do pliku CSV.
-        user (str): Nazwa użytkownika bazy danych.
-        password (str): Hasło użytkownika bazy danych.
-        host (str): Adres hosta bazy danych.
-        port (str): Numer portu serwera.
-        database (str): Nazwa bazy danych.
-
+        table_name (str): Name of the table to import the data into.
+        csv_file (str): Path to the CSV file.
+        user (str): Database username.
+        password (str): Database user password.
+        host (str): Database host address.
+        port (str): Server port number.
+        database (str): Name of the database.
     """
-
 
     engine = create_engine(f"postgresql://{user}:{password}@{host}:{port}/{database}")
     try:
-        df=pd.read_csv(plik_csv)
+        df = pd.read_csv(csv_file)
         gdf = gpd.GeoDataFrame(df, geometry=gpd.points_from_xy(df.WspX, df.WspY, crs="EPSG:2180"))
         gdf = gdf.to_crs(2180)
         gdf.to_postgis(table_name, engine, if_exists='replace', index=False)
-        print(f"Wczytano dane z pliku {plik_csv} do tabeli {table_name} w bazie danych {database}")
+        print(f"Data from {csv_file} has been successfully loaded into the table {table_name} in the {database} database")
     except FileNotFoundError as e:
-        print(f"Błąd: {e}. Upewnij się, że plik csv o podanej nazwie istnieje.")
+        print(f"Error: {e}. Please ensure the CSV file exists.")
     except Exception as e:
-        print(f"Wystąpił błąd: {e}")
-
-
+        print(f"An error occurred: {e}")
 
 
