@@ -9,6 +9,8 @@
 
 This project provides a set of tools for processing and managing geospatial data. It includes functionalities to import geospatial data from various formats (CSV, Shapefile, GeoJSON, SQL) into a PostGIS-enabled PostgreSQL database and export data to Shapefiles. The project also supports fetching parcel data from the ULDK API The uldk_api function is designed to interact with the ULDK (Unified Land Registry Database) API, which provides geospatial data about land parcels in Poland.
 
+To import data from various file formats (CSV, Shapefile, GeoJSON, SQL) into PostGIS, use the `import_to_postgis` function. This function determines the file format based on the file extension and calls the appropriate import function.
+
 
 ## Features
 
