@@ -4,94 +4,96 @@ import shapely as sh
 import geopandas as gpd
 from DBloader import table_loader
 
-
-
-
-def uldk_api(dane):
+def uldk_api(data):
     """
-        Funkcja pobiera identyfikatory działek z pliku CSV,
-        wysyła zapytania do serwisu ULDK w celu pobrania danych na temat działek,
-        a następnie przetwarza te dane do postaci ramki danych geopandas.
+    The function fetches parcel identifiers from a CSV file, sends requests to the ULDK service
+    to retrieve data about the parcels, and then processes this data into a GeoPandas DataFrame.
 
-        Args:
-            dane (str): Ścieżka do pliku CSV zawierającego identyfikatory działek.
+    Args:
+        data (str): Path to the CSV file containing parcel identifiers.
 
-        Returns:
-            GeoDataFrame: Ramka danych geopandas zawierająca dane na temat działek.
+    Returns:
+        GeoDataFrame: A GeoPandas DataFrame containing data about the parcels.
     """
     def df_to_list(df):
         """
-            Funkcja przekształca ramkę danych pandas do listy identyfikatorów działek.
+        Converts a pandas DataFrame into a list of parcel identifiers.
 
-            Args:
-                df (DataFrame): Ramka danych pandas zawierająca identyfikatory działek.
+        Args:
+            df (DataFrame): A pandas DataFrame containing parcel identifiers.
 
-            Returns:
-                list: Lista identyfikatorów działek.
-            """
-        list=[]
-        for i in range(len(df.index)):
-            list.append(df.at[i, df.columns[0]])
-        return list
-
-    def request(list):
+        Returns:
+            list: A list of parcel identifiers.
         """
-           Funkcja wysyła zapytania HTTP do serwisu ULDK w celu pobrania danych na temat działek na podstawie ich identyfikatorów.
+        parcel_list = []
+        for i in range(len(df.index)):
+            parcel_list.append(df.at[i, df.columns[0]])
+        return parcel_list
 
-           Args:
-               id_list (list): Lista identyfikatorów działek.
+    def request(parcel_list):
+        """
+        Sends HTTP requests to the ULDK service to retrieve data about parcels based on their identifiers.
 
-           Returns:
-               list: Lista odpowiedzi HTTP zawierających dane na temat działek.
-           """
-        result=[]
-        for i in list:
-            result.append(requests.get("https://uldk.gugik.gov.pl/?request=GetParcelById&id=" + i + "&result=teryt,commune,region,geom_wkb").text)
+        Args:
+            parcel_list (list): A list of parcel identifiers.
+
+        Returns:
+            list: A list of HTTP responses containing data about parcels.
+        """
+        result = []
+        for parcel_id in parcel_list:
+            result.append(requests.get(f"https://uldk.gugik.gov.pl/?request=GetParcelById&id={parcel_id}&result=teryt,commune,region,geom_wkb").text)
         return result
 
     def result_to_df(result):
         """
-            Funkcja przetwarza odpowiedzi HTTP z serwisu ULDK do postaci ramki danych pandas.
+        Processes the HTTP responses from the ULDK service into a pandas DataFrame.
 
-            Args:
-                result (list): Lista odpowiedzi HTTP zawierających dane na temat działek.
+        Args:
+            result (list): A list of HTTP responses containing data about parcels.
 
-            Returns:
-                DataFrame: Ramka danych pandas zawierająca dane na temat działek.
-            """
-        to_df_list=[]
-        for i in result:
-            i = i.strip()
-            to_df_list.append(i.split(sep='|'))
-            df = pd.DataFrame({'TERYT': ['Null'] * len(to_df_list), 'Miasto': ['Null'] * len(to_df_list), 'Region': ['Null'] * len(to_df_list),'WKB': ['Null'] * len(to_df_list)})
-            for i in range(len(to_df_list)):
-                for l in range(len(to_df_list[i])):
-                    df.iloc[i, l] = to_df_list[i][l]
+        Returns:
+            DataFrame: A pandas DataFrame containing data about parcels.
+        """
+        to_df_list = []
+        for response in result:
+            response = response.strip()
+            to_df_list.append(response.split(sep='|'))
+        df = pd.DataFrame({
+            'TERYT': ['Null'] * len(to_df_list),
+            'City': ['Null'] * len(to_df_list),
+            'Region': ['Null'] * len(to_df_list),
+            'WKB': ['Null'] * len(to_df_list)
+        })
+        for i in range(len(to_df_list)):
+            for j in range(len(to_df_list[i])):
+                df.iloc[i, j] = to_df_list[i][j]
         return df
 
     def df_to_gdf(df):
+        """
+        Converts a pandas DataFrame containing parcel data into a GeoPandas DataFrame.
+
+        Args:
+            df (DataFrame): A pandas DataFrame containing parcel data, including geometry in WKB format.
+
+        Returns:
+            GeoDataFrame: A GeoPandas DataFrame with geometry.
+        """
         df = df[df['WKB'] != 'Null']
         geometry = df['WKB'].map(sh.wkb.loads)
         gdf = gpd.GeoDataFrame(df, crs="EPSG:2180", geometry=geometry)
         return gdf
 
+    return df_to_gdf(result_to_df(request(df_to_list(pd.read_csv(data)))))
 
-    return df_to_gdf(result_to_df(request(df_to_list(pd.read_csv(dane)))))
-
-
-def gdf_to_shp(gdf):
+def gdf_to_shp(gdf, filename):
     """
-        Konwertuje ramkę danych geopandas na plik shapefile.
+    Converts a GeoPandas DataFrame into a shapefile.
 
-        Args:
-            gdf (GeoDataFrame): Ramka danych geopandas zawierająca geometrię.
-            filename (str): Nazwa pliku shapefile.
+    Args:
+        gdf (GeoDataFrame): A GeoPandas DataFrame containing geometry.
+        filename (str): Name of the shapefile to be saved.
 
     """
-    gdf.to_file(filename=f'{dane}.shp', driver='ESRI Shapefile')
-
-
-
-
-table_loader(uldk_api("ewid_id.csv"),"Parcele")
-
+    gdf.to_file(filename=filename, driver='ESRI Shapefile')
