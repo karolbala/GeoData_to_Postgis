@@ -1,4 +1,4 @@
-# GIS Data Processing and PostGIS Integration Tool
+# GeoData_to_Postgis
 
 ## Table of Contents
 - [Overview](#overview)
